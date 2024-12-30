@@ -20,17 +20,21 @@ jobs:
     - name: Deploy to EC2 instance
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # Update packages and install dependencies (if necessary)
+          # Update package lists
           sudo apt-get update
-          sudo apt-get install -y nginx
           
-          # Remove the default nginx index.html file
+          # Install Apache2 if not already installed
+          sudo apt-get install -y apache2
+
+          # Remove the default Apache index.html
           sudo rm -f /var/www/html/index.html
 
-          # Copy the new HTML files to the nginx web root
+          # Copy the new HTML website files to the Apache web root
           sudo cp -r ~/html-website/* /var/www/html/
 
-          # Restart nginx to serve the new site
-          sudo systemctl restart nginx
-        EOF
+          # Set proper permissions for the copied files
+          sudo chown -R www-data:www-data /var/www/html/
 
+          # Restart Apache to serve the new site
+          sudo systemctl restart apache2
+        EOF
