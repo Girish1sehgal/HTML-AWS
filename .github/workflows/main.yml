@@ -1,37 +1,31 @@
-name: Html-website-EC2
+name: Deploy to EC2
 
 on:
   push:
     branches:
-    - main
+      - main  # Trigger the workflow on pushes to the main branch
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
     - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
-
-    - name: Deploy to EC2 instance
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # Update package lists
-          sudo apt-get update
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H <YOUR_SERVER_IP> >> ~/.ssh/known_hosts
 
-          # Remove the default Apache index.html
-          sudo rm -f /var/www/html/index.html
+    - name: Copy Code to EC2
+      run: |
+        scp -o StrictHostKeyChecking=no -r ./ ubuntu@<YOUR_SERVER_IP>:/var/www/html/
 
-          # Copy the new HTML website files to the Apache web root
-          sudo cp -r ~/html-website/* /var/www/html/
-
-          # Set proper permissions for the copied files
-          sudo chown -R www-data:www-data /var/www/html/
-
-          # Restart Apache to serve the new site
-          sudo systemctl restart apache2
+    - name: (Optional) Restart Apache or Services
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@<YOUR_SERVER_IP> << EOF
+        sudo systemctl restart apache2
         EOF
